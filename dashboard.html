@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watt's Up — Dorm Energy Monitor</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --dim: #94a3b8;
+    --accent: #38bdf8;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+  }
+  .container { width: 100%; max-width: 420px; }
+  h1 {
+    font-size: 24px;
+    text-align: center;
+    margin: 20px 0 4px;
+    background: linear-gradient(135deg, var(--accent), #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle { text-align: center; color: var(--dim); font-size: 13px; margin-bottom: 20px; }
+
+  .dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: none;
+  }
+  .dot.online  { background: var(--green); }
+  .dot.offline { background: var(--red); animation: blink 1s infinite; }
+  .dot.connecting { background: var(--yellow); animation: blink .5s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--dim);
+    margin-bottom: 12px;
+  }
+
+  .mode-banner {
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    transition: background .3s, color .3s;
+  }
+  .mode-banner.normal  { background: #14532d; color: #86efac; }
+  .mode-banner.pending { background: #713f12; color: #fde047; }
+  .mode-banner.cutoff  { background: #7f1d1d; color: #fca5a5; }
+  .mode-banner.manual  { background: #1e3a5f; color: #93c5fd; }
+  .mode-banner .mode-icon { font-size: 36px; margin-bottom: 6px; }
+  .mode-banner .mode-text { font-size: 20px; font-weight: 700; }
+  .mode-banner .mode-sub  { font-size: 13px; opacity: .8; margin-top: 4px; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+  }
+  .card .label { font-size: 12px; color: var(--dim); margin-bottom: 4px; }
+  .card .value { font-size: 22px; font-weight: 700; }
+  .card .value.warn { color: var(--yellow); }
+  .card .value.danger { color: var(--red); }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .btn-row button {
+    flex: 1;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .btn-row button:hover { opacity: .85; }
+  .btn-row button:active { opacity: .7; }
+  .btn-row button:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-on  { background: var(--green); color: #0f172a; }
+  .btn-off { background: var(--red); color: white; }
+
+  .reset-link {
+    text-align: center;
+    font-size: 13px;
+  }
+  .reset-link a {
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .reset-link a:hover { text-decoration: underline; }
+
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--dim);
+    margin-top: 20px;
+  }
+
+  .waste-warn {
+    background: #713f12;
+    color: #fde047;
+    border-radius: 10px;
+    padding: 10px 14px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .waste-warn.show { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Watt's Up</h1>
+  <p class="subtitle">Dorm Energy Monitor · MQTT</p>
+
+  <div class="status-bar">
+    <span class="dot connecting" id="statusDot"></span>
+    <span id="statusLabel">Connecting...</span>
+  </div>
+
+  <div class="waste-warn" id="wasteWarn">Lights on in empty room</div>
+
+  <div class="mode-banner normal" id="modeBanner">
+    <div class="mode-icon" id="modeIcon">🟢</div>
+    <div class="mode-text" id="modeText">Waiting for data...</div>
+    <div class="mode-sub" id="modeSub"></div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="label">Power Load</div><div class="value" id="loadW">-- W</div></div>
+    <div class="card"><div class="label">Light (lux)</div><div class="value" id="lightVal">--</div></div>
+    <div class="card"><div class="label">Idle Time</div><div class="value" id="idleTime">--</div></div>
+    <div class="card"><div class="label">Energy Saved</div><div class="value" id="savedWh">-- Wh</div></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-on" id="btnOn" onclick="sendCmd('on')">Power ON</button>
+    <button class="btn-off" id="btnOff" onclick="sendCmd('off')">Power OFF</button>
+  </div>
+
+  <div class="reset-link">
+    <a onclick="sendCmd('reset')">Exit manual mode, resume auto control</a>
+  </div>
+
+  <div class="footer">
+    MQTT cross-network · broker.emqx.io
+  </div>
+</div>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+const BROKER_URL = 'ws://broker.emqx.io:8083/mqtt';
+const TOPIC_STATUS  = 'wattsup/status';
+const TOPIC_COMMAND = 'wattsup/command';
+
+let client = null;
+let lastData = null;
+let idleTimer = null;
+
+(function init() {
+  const clientId = 'wattsup-dash-' + Math.random().toString(36).slice(2, 8);
+  client = mqtt.connect(BROKER_URL, {
+    clientId: clientId,
+    clean: true,
+    connectTimeout: 5000,
+    reconnectPeriod: 3000
+  });
+
+  client.on('connect', () => {
+    dot('online');
+    $('statusLabel').textContent = 'MQTT Connected · Waiting for device';
+    client.subscribe(TOPIC_STATUS);
+    $('btnOn').disabled = false;
+    $('btnOff').disabled = false;
+  });
+
+  client.on('reconnect', () => {
+    dot('connecting');
+    $('statusLabel').textContent = 'Reconnecting...';
+  });
+
+  client.on('close', () => {
+    dot('offline');
+    $('statusLabel').textContent = 'Disconnected, reconnecting...';
+    $('btnOn').disabled = true;
+    $('btnOff').disabled = true;
+  });
+
+  client.on('error', () => {
+    dot('offline');
+    $('statusLabel').textContent = 'Connection failed';
+  });
+
+  client.on('message', (topic, payload) => {
+    if (topic === TOPIC_STATUS) {
+      try {
+        const d = JSON.parse(payload.toString());
+        lastData = d;
+        updateUI(d);
+        resetIdleTimer();
+      } catch (e) {
+        // ignore malformed JSON
+      }
+    }
+  });
+})();
+
+function resetIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    dot('offline');
+    $('statusLabel').textContent = 'Device offline (no data)';
+    $('btnOn').disabled = true;
+    $('btnOff').disabled = true;
+  }, 5000);
+}
+
+function sendCmd(cmd) {
+  if (!client || !client.connected) {
+    alert('MQTT not connected. Please wait.');
+    return;
+  }
+  client.publish(TOPIC_COMMAND, cmd);
+}
+
+function updateUI(d) {
+  const banner = $('modeBanner');
+  banner.className = 'mode-banner';
+  if (d.manual) {
+    banner.classList.add('manual');
+    $('modeIcon').textContent = '🎮';
+    $('modeText').textContent = 'Manual Mode';
+    $('modeSub').textContent = 'Remote control active, auto logic paused';
+  } else if (d.status === 'cutoff') {
+    banner.classList.add('cutoff');
+    $('modeIcon').textContent = '🔴';
+    $('modeText').textContent = 'Power Cutoff';
+    $('modeSub').textContent = 'Room empty, power turned off';
+  } else if (d.status === 'pending') {
+    banner.classList.add('pending');
+    $('modeIcon').textContent = '⏳';
+    $('modeText').textContent = 'Cutoff Pending...';
+    $('modeSub').textContent = '30-second grace period';
+  } else {
+    banner.classList.add('normal');
+    $('modeIcon').textContent = d.occupied ? '🟢' : '🟡';
+    $('modeText').textContent = d.occupied ? 'Room Occupied' : 'Room Empty';
+    $('modeSub').textContent = d.occupied ? 'System running normally' : 'Idle timer counting';
+  }
+
+  $('loadW').textContent = (d.load_w != null ? d.load_w.toFixed(1) : '--') + ' W';
+  $('loadW').className = 'value' + (d.load_w > 10 ? ' warn' : '');
+  $('lightVal').textContent = d.lux != null ? d.lux.toFixed(1) + ' lx' : '--';
+  $('lightVal').className = 'value';
+  $('idleTime').textContent = formatTime(d.idle_time || 0);
+  $('savedWh').textContent = (d.saved_wh != null ? Number(d.saved_wh).toFixed(2) : '--') + ' Wh';
+
+  const lightWaste = !d.occupied && d.lux > 100;
+  $('wasteWarn').classList.toggle('show', lightWaste);
+
+  dot('online');
+  $('statusLabel').textContent = 'MQTT Connected · ' + (d.device || 'Watt\'s Up');
+  $('btnOn').disabled = false;
+  $('btnOff').disabled = false;
+}
+
+function formatTime(sec) {
+  if (sec < 60) return sec + ' s';
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + 'm ' + s + 's';
+}
+
+function dot(cls) {
+  $('statusDot').className = 'dot ' + cls;
+}
+</script>
+</body>
+</html>
