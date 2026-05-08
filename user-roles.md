@@ -1,14 +1,14 @@
-# Watt's Up (DormGuard) — User Roles
+# Energy Monitoring System — User Roles
 
-Three roles use the Watt's Up (DormGuard) system. Every feature belongs to one or more of these roles.
+Three roles use the Energy Monitoring System. Every feature belongs to one or more of these roles.
 
 ## Role overview
 
 | Role | Who they are | Typical number per group |
 |---|---|---|
 | **Dorm Resident Student** | An undergraduate student living in a 4-6 person shared dorm. | 4–6 per room |
-| **Building Manager** | Staff responsible for the daily safety and operation of a specific dormitory building. | 1–2 per building |
-| **Property Manager** | Campus administration overseeing sustainability and utility costs across multiple buildings. | 1–3 per campus |
+| **Company Finance Officer** | Corporate staff managing budgets, sustainability investments, and operational efficiency. | 1–2 per plant/company |
+| **Factory Workshop Supervisor** | Floor manager overseeing production lines, shift teams, and equipment safety. | 1–2 per shift/floor |
 
 ---
 
@@ -21,56 +21,36 @@ Three roles use the Watt's Up (DormGuard) system. Every feature belongs to one o
 - View the "Last 3 Auto-Saving Actions" log for their specific room.
 - Toggle "Smart Power Zones" settings on/off (e.g., Desk Zone, Bedside Zone).
 - Receive real-time push notifications when power is automatically cut off.
-- Manually override the auto-shutoff to restore power.
+- Manually override the auto-shutoff to restore power to previously active devices.
 
 **Cannot do:**
 - View the real-time power consumption or occupancy status of any other dorm room.
-- Access the Building Manager's floor plan dashboard.
-- Change the system-wide threshold for auto-shutoff (e.g., changing the 15-minute timer or 300 lux threshold).
+- Access any factory, workshop, or financial dashboards.
+- Change the system-wide threshold for auto-shutoff (e.g., the 15-minute timer or 300 lux threshold).
 
 ---
 
-## Building Manager
+## Company Finance Officer
 
-**Goal:** Ensure building safety and immediately intervene in abnormal or high-risk electricity usage.
+**Goal:** Track operational efficiency, manage energy costs, and justify sustainability investments.
 
 **Can do:**
-- Access the Admin Dashboard with a color-coded floor plan view (green, yellow, red).
-- View real-time power curves and last occupancy timestamps for any room in their assigned building.
-- Receive real-time "High Risk" alerts (e.g., standby >5W, night consumption >200W).
-- Log intervention actions in the "Action Log" tab (e.g., "Inspected room - removed heater").
-- View the daily "Top 5 High-Consumption Rooms" leaderboard for their building.
+- Access the "Energy Cost Insights" module on the Finance Dashboard.
+- Automatically receive and view daily financial impact reports (e.g., electricity cost saved vs. baseline, estimated monthly savings).
+- View the "Top Cost Leaks" table (Machine ID, Standby Power, Daily Cost, Annual Projection).
+- View ROI and payback periods for recommended retrofits (e.g., Smart outlet upgrades).
+- Export energy financial data to Excel/PDF for monthly reviews.
 
 **Cannot do:**
-- View or change a student's personal app settings (e.g., Smart Power Zones).
-- Remotely cut off or restore power to a specific device (they can only monitor and physically inspect).
-- Access high-level property management analytics across different buildings.
+- Receive granular, real-time alerts for individual machine anomalies (their focus is on daily/monthly cost trends, not minute-by-minute firefighting).
+- Log physical intervention actions on the factory floor (this is the Supervisor's job).
+- Remotely control or cut power to any factory machinery.
 
 ---
 
-## Property Manager
+## Factory Workshop Supervisor
 
-**Goal:** Assess overall campus performance, identify waste hotspots, and motivate students through data.
+**Goal:** Monitor real-time energy use, quickly correct inefficiencies, and ensure equipment safety.
 
 **Can do:**
-- Access the "Energy Insights" module on the Property Management Dashboard.
-- Drill down analytics from Building → Floor → Room with hourly energy heatmaps.
-- Automatically receive and view daily summary reports (target achievement, best rooms, personalized recommendations).
-- Export PDF reports with charts and actionable recommendations.
-- Manage the "Public Display Mode" content (weekly leaderboards and eco tips).
-
-**Cannot do:**
-- Receive granular, real-time alerts for individual room anomalies (their focus is on daily/weekly trends, not minute-by-minute firefighting).
-- Log physical intervention actions for specific rooms (this is the Building Manager's job).
-
----
-
-## Rules for the AI agent
-
-Apply these to every feature you build:
-
-1. **Strict Data Isolation for Students.** `user.role === 'student'` must ONLY have access to data where `room_id` matches their own. Never expose another room's data to a student.
-2. **Distinct Dashboards.** The system has three distinct frontend interfaces: Mobile App (Students), Admin Dashboard (Building Managers), and Analytics Dashboard (Property Managers). Do not mix UI components between them.
-3. **Action Logs are permanent.** When a Building Manager records an intervention in the Action Log, it is append-only. Do not provide edit or delete APIs for these logs.
-4. **Read-only Monitoring for Managers.** Managers can see power curves and alerts, but do not generate UI buttons for managers to remotely control student hardware relays. The hardware acts autonomously.
-5. **When in doubt about permissions, ask before generating.** Do not guess.
+- Access the Real-Time Floor View dashboard with an
